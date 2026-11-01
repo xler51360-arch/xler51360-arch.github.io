@@ -37,6 +37,16 @@ try{const c=JSON.parse(localStorage.getItem("mh_config"))||{};document.documentE
 }
 :root[data-theme="sombre"]{
   --bg:#121A16; --paper:#1A2520; --ink:#E7ECE6; --muted:#9AA89F; --line:#2C3A33; --stop:#E05A40; --good:#5DBB84; --warn:#E3B04B; color-scheme:dark}
+/* Violet & Or : parquet violet profond, accents or */
+:root[data-theme="violet"]{
+  --bg:#170B2B; --paper:#22123D; --ink:#F5F0FF; --muted:#B8A6D9; --line:#3A2462; --stop:#E8573F; --good:#5DCB8A; --warn:#FDB927; color-scheme:dark}
+:root[data-theme="violet"] body{background:radial-gradient(120% 60% at 50% 0%,#2B1450 0%,var(--bg) 60%) fixed}
+:root[data-theme="violet"] .ring .bgc{stroke:#552583}
+:root[data-theme="violet"] #big{box-shadow:0 0 0 4px #552583,0 14px 30px rgba(0,0,0,.45)}
+:root[data-theme="violet"] h1{font-style:italic;letter-spacing:-.035em}
+:root[data-theme="violet"] .tabs{background:#1D0E36;border-top-color:#552583}
+:root[data-theme="violet"] .card{border-color:#3A2462;background:linear-gradient(180deg,#26144A,#22123D)}
+:root[data-theme="violet"] .timer{color:#FDB927}
 @media (prefers-color-scheme:dark){:root[data-theme="auto"]{
   --bg:#121A16; --paper:#1A2520; --ink:#E7ECE6; --muted:#9AA89F; --line:#2C3A33; --stop:#E05A40; --good:#5DBB84; --warn:#E3B04B; color-scheme:dark}}
 :root[data-size="grand"]{font-size:112.5%}
@@ -179,6 +189,10 @@ h2{font-family:var(--display);font-weight:700;font-size:1.15rem;margin:0;letter-
 .seg{display:flex;gap:6px;flex-wrap:wrap}
 .seg button{font-size:.85rem;padding:8px 14px;border-radius:999px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
 .seg button[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--paper);font-weight:600}
+.diag{font-size:.85rem;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);display:flex;flex-direction:column;gap:4px}
+.diag.ok{border-color:color-mix(in srgb,var(--good) 60%,var(--line));background:color-mix(in srgb,var(--good) 12%,var(--paper))}
+.diag.ko{border-color:color-mix(in srgb,var(--stop) 60%,var(--line));background:color-mix(in srgb,var(--stop) 10%,var(--paper))}
+.diag b{font-weight:700}
 .swatches{display:flex;gap:10px;flex-wrap:wrap}
 .swatches button{width:38px;height:38px;border-radius:50%;border:3px solid var(--paper);box-shadow:0 0 0 1.5px var(--line);cursor:pointer;padding:0}
 .swatches button[aria-pressed="true"]{box-shadow:0 0 0 3px var(--ink)}
@@ -316,9 +330,16 @@ h2{font-family:var(--display);font-weight:700;font-size:1.15rem;margin:0;letter-
         <div class="msg" id="sMsg"></div>
       </section>
       <section class="card">
+        <h2>Envoi automatique</h2>
+        <p>Vérifie que le service répond, puis envoie un relevé d'essai pour la semaine en cours.</p>
+        <div class="row"><button class="btn" id="tPing">Tester la connexion</button><button class="btn" id="tSend">Envoyer le relevé maintenant</button></div>
+        <div class="row"><button class="link" id="tResend">Renvoyer tout l'historique au service</button></div>
+        <div class="diag" id="diag" hidden></div>
+      </section>
+      <section class="card">
         <h2>Apparence</h2>
-        <div class="field"><div class="lbl">Thème</div><div class="seg" data-opt="theme"><button data-v="auto">Auto</button><button data-v="clair">Clair</button><button data-v="sombre">Sombre</button></div></div>
-        <div class="field"><div class="lbl">Couleur</div><div class="swatches" data-opt="accent"></div></div>
+        <div class="field"><div class="lbl">Thème</div><div class="seg" data-opt="theme"><button data-v="auto">Auto</button><button data-v="clair">Clair</button><button data-v="sombre">Sombre</button><button data-v="violet">Violet &amp; Or</button></div></div>
+        <div class="field" id="accField"><div class="lbl">Couleur</div><div class="swatches" data-opt="accent"></div></div>
         <div class="field"><div class="lbl">Affichage des heures</div><div class="seg" data-opt="format"><button data-v="hm">7 h 45</button><button data-v="dec">7,75 h</button></div></div>
         <div class="field"><div class="lbl">Taille du texte</div><div class="seg" data-opt="taille"><button data-v="normal">Normale</button><button data-v="grand">Grande</button></div></div>
         <p>L'apparence s'applique tout de suite.</p>
@@ -411,6 +432,7 @@ document.addEventListener("visibilitychange",()=>{if(!document.hidden){render();
 function renderSync(){
   const s=$("sync"), t=s.querySelector("span");
   if(!cfg.url){s.className="sync";t.textContent="Envoi auto : non";return}
+  if(!/^https:\/\/script\.google\.com\/(a\/[^/]+\/)?macros\/s\/[^/]+\/exec$/.test(cfg.url.trim())){s.className="sync wait";t.textContent="Adresse à vérifier";return}
   if(pending.length){s.className="sync wait";t.textContent=pending.length+" en attente";return}
   s.className="sync ok";t.textContent="Archivé";
 }
@@ -614,6 +636,41 @@ $("sOk").onclick=()=>{
 };
 $("replayOnb").onclick=()=>startOnb();
 
+/* ---------- diagnostic de l'envoi automatique ---------- */
+function diag(ok,lines){const d=$("diag");d.hidden=false;d.className="diag "+(ok?"ok":"ko");d.innerHTML=lines.map(l=>`<div>${l}</div>`).join("")}
+async function callScript(action){
+  const u=(cfg.url||"").trim();
+  if(!u){diag(false,["<b>Aucune adresse de service.</b>","Colle l'adresse obtenue au déploiement du script Google dans « Adresse du service d'envoi », puis Enregistrer."]);return null}
+  if(!/^https:\/\/script\.google\.com\/(a\/[^/]+\/)?macros\/s\/[^/]+\/exec$/.test(u)){diag(false,["<b>L'adresse ne semble pas correcte.</b>","Elle doit commencer par https://script.google.com/macros/s/ et finir par <b>/exec</b> (pas /dev)."]);return null}
+  if(!navigator.onLine){diag(false,["<b>Pas de connexion internet.</b>","Réessaie une fois connecté."]);return null}
+  diag(true,["Interrogation du service…"]);
+  try{
+    const r=await fetch(u+"?action="+action,{method:"GET",redirect:"follow"});
+    const t=await r.text();
+    try{return JSON.parse(t)}catch(e){
+      if(/Service Mes heures actif/.test(t)) {diag(false,["<b>Le service répond mais avec une ancienne version du script.</b>","Remplace le code par le nouveau fichier envoi-hebdo.gs, puis Déployer → Gérer les déploiements → crayon → Version : Nouvelle version → Déployer."]);return null}
+      diag(false,["<b>Le service demande une connexion Google.</b>","Dans le déploiement, « Qui peut accéder » doit être réglé sur <b>Tout le monde</b>, puis redéploie."]);return null}
+  }catch(e){diag(false,["<b>Pas de réponse du service.</b>","Vérifie l'adresse et que le déploiement est de type <b>Application Web</b> avec l'accès « Tout le monde »."]);return null}
+}
+$("tPing").onclick=async()=>{
+  const r=await callScript("ping"); if(!r) return;
+  const l=["<b>Connexion réussie.</b>","Lignes archivées dans la feuille : <b>"+r.lignes+"</b>","Destinataire : <b>"+esc(r.dest||"?")+"</b>",
+    r.declencheur?"Envoi programmé chaque dimanche à 23 h : <b>oui</b>":"Envoi programmé : <b>non</b>. Dans l'éditeur Apps Script, lance une fois la fonction « installer »."];
+  if(!r.lignes&&Object.keys(days).length) l.push("La feuille est vide : touche « Renvoyer tout l'historique au service ».");
+  if(pending.length) l.push(pending.length+" journée(s) encore en attente sur ce téléphone.");
+  diag(!!r.declencheur&&(r.lignes>0||!Object.keys(days).length),l);
+};
+$("tSend").onclick=async()=>{
+  await flush();
+  const r=await callScript("envoi"); if(!r) return;
+  if(r.ok) diag(true,["<b>Relevé envoyé.</b>","Le mail part vers <b>"+esc(r.dest)+"</b> avec le PDF de la semaine en cours. Pense à vérifier les spams."]);
+  else diag(false,["<b>Le script a renvoyé une erreur.</b>",esc(r.erreur||"Erreur inconnue"),"Ouvre l'éditeur Apps Script et lance « testEnvoi » une fois pour accorder l'autorisation d'envoyer des mails."]);
+};
+$("tResend").onclick=()=>{
+  if(!cfg.url){callScript("ping");return}
+  pending=[...new Set([...pending,...Object.keys(days)])];store(K_PEND,pending);flush().then(()=>diag(true,["<b>Historique renvoyé</b> ("+Object.keys(days).length+" journées).","Touche « Tester la connexion » pour vérifier."]));
+};
+
 /* ---------- PDF ---------- */
 function buildPdf(){
   if(!window.jspdf)throw new Error('pdf');const {jsPDF}=window.jspdf, doc=new jsPDF({unit:"mm",format:"a4"}), end=addDays(weekStart,6);
@@ -651,7 +708,9 @@ $("pdfBtn").onclick=async()=>{
 /* ---------- apparence ---------- */
 document.querySelector('[data-opt="accent"]').innerHTML=Object.keys(ACCENTS).map(k=>`<button data-v="${k}" aria-label="${ACCENTS[k][2]}" title="${ACCENTS[k][2]}" style="background:${ACCENTS[k][0]}"></button>`).join("");
 function applyLook(){
-  const r=document.documentElement, a=ACCENTS[cfg.accent]||ACCENTS.safran;
+  const r=document.documentElement, a=cfg.theme==="violet"?["#FDB927","#2A1600"]:(ACCENTS[cfg.accent]||ACCENTS.safran);
+  const af=$("accField"); if(af) af.hidden=cfg.theme==="violet";
+  const tc=document.querySelector('meta[name="theme-color"]'); if(tc) tc.content=cfg.theme==="violet"?"#170B2B":"#1C2A24";
   r.dataset.theme=cfg.theme; r.dataset.size=cfg.taille;
   r.style.setProperty("--accent",a[0]); r.style.setProperty("--accent-ink",a[1]);
   document.querySelectorAll("[data-opt] button").forEach(b=>b.setAttribute("aria-pressed",String(cfg[b.parentNode.dataset.opt]===b.dataset.v)));
