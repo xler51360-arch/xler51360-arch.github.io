@@ -47,6 +47,12 @@ try{const c=JSON.parse(localStorage.getItem("mh_config"))||{};document.documentE
 :root[data-theme="violet"] .tabs{background:#1D0E36;border-top-color:#552583}
 :root[data-theme="violet"] .card{border-color:#3A2462;background:linear-gradient(180deg,#26144A,#22123D)}
 :root[data-theme="violet"] .timer{color:#FDB927}
+/* Ballon de basket pour le bouton (thème Violet & Or) */
+:root[data-theme="violet"] #big{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3CradialGradient id='g' cx='35%25' cy='30%25' r='75%25'%3E%3Cstop offset='0' stop-color='%23F7A457'/%3E%3Cstop offset='.6' stop-color='%23E2701F'/%3E%3Cstop offset='1' stop-color='%239E430D'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='50' cy='50' r='50' fill='url(%23g)'/%3E%3Cg fill='none' stroke='%23261005' stroke-width='2.2'%3E%3Cpath d='M50 0v100M0 50h100'/%3E%3Cpath d='M17 8c14 12 22 26 22 42s-8 30-22 42'/%3E%3Cpath d='M83 8C69 20 61 34 61 50s8 30 22 42'/%3E%3C/g%3E%3C/svg%3E") center/100% 100% no-repeat,#E2701F;color:#fff;text-shadow:0 2px 6px rgba(0,0,0,.7),0 0 2px rgba(0,0,0,.8)}
+:root[data-theme="violet"] #big.on{background:radial-gradient(circle,rgba(190,30,20,.35),rgba(150,20,15,.55)),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3CradialGradient id='g' cx='35%25' cy='30%25' r='75%25'%3E%3Cstop offset='0' stop-color='%23F7A457'/%3E%3Cstop offset='.6' stop-color='%23E2701F'/%3E%3Cstop offset='1' stop-color='%239E430D'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='50' cy='50' r='50' fill='url(%23g)'/%3E%3Cg fill='none' stroke='%23261005' stroke-width='2.2'%3E%3Cpath d='M50 0v100M0 50h100'/%3E%3Cpath d='M17 8c14 12 22 26 22 42s-8 30-22 42'/%3E%3Cpath d='M83 8C69 20 61 34 61 50s8 30 22 42'/%3E%3C/g%3E%3C/svg%3E") center/100% 100% no-repeat,#E2701F;box-shadow:0 0 0 4px #E8573F,0 14px 30px rgba(0,0,0,.45)}
+:root[data-theme="violet"] #big small{opacity:1}
+:root[data-theme="violet"] #big.spin{animation:spin .7s cubic-bezier(.3,.7,.3,1)}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 @media (prefers-color-scheme:dark){:root[data-theme="auto"]{
   --bg:#121A16; --paper:#1A2520; --ink:#E7ECE6; --muted:#9AA89F; --line:#2C3A33; --stop:#E05A40; --good:#5DBB84; --warn:#E3B04B; color-scheme:dark}}
 :root[data-size="grand"]{font-size:112.5%}
@@ -467,7 +473,7 @@ function openVac(){
   return null;
 }
 let popT=null;
-function pop(){const d=$("done");d.classList.remove("pop");void d.offsetWidth;d.classList.add("pop");clearTimeout(popT);popT=setTimeout(()=>d.classList.remove("pop"),950)}
+function pop(){const d=$("done");d.classList.remove("pop");big.classList.remove("spin");void d.offsetWidth;d.classList.add("pop");big.classList.add("spin");clearTimeout(popT);popT=setTimeout(()=>{d.classList.remove("pop");big.classList.remove("spin")},950)}
 function startService(){
   const now=new Date(),k=key(now);
   days[k]=days[k]||{vacations:[]};days[k].vacations.push({d:hm(now),f:null,repas:true});
