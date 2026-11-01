@@ -101,7 +101,7 @@ h2{font-weight:700;font-size:1.05rem;margin:0}
 .day.sel{background:var(--ink);color:var(--paper)} .day.sel .h{color:var(--accent)}
 
 .panel{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px}
-.panel input[type=text],.panel input[type=url]{font:inherit;width:100%;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.panel input[type=text],.panel input[type=url],.panel input[type=email]{font:inherit;width:100%;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
 .panel p{margin:0;font-size:.82rem;color:var(--muted)}
 .row{display:flex;gap:8px;flex-wrap:wrap}
 </style>
@@ -120,7 +120,8 @@ h2{font-weight:700;font-size:1.05rem;margin:0}
     <h2>Réglages</h2>
     <div><label class="lbl" for="sNom">Prénom</label><input type="text" id="sNom" maxlength="30" autocomplete="off"></div>
     <div><label class="lbl" for="sUrl">Adresse du service d'envoi</label><input type="url" id="sUrl" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></div>
-    <p>Cette adresse est fournie à l'installation. Elle sert à archiver les journées en ligne et à envoyer le relevé PDF par mail chaque dimanche soir.</p>
+    <div><label class="lbl" for="sDest">Adresse mail du relevé</label><input type="email" id="sDest" autocomplete="off"></div>
+    <p>Cette adresse est fournie à l'installation. Elle sert à archiver les journées en ligne et à envoyer le relevé PDF chaque dimanche soir à l'adresse mail indiquée.</p>
     <div class="row"><button class="btn primary" id="sOk">Enregistrer</button><button class="btn" id="sCancel">Fermer</button></div>
   </section>
 
@@ -138,7 +139,7 @@ h2{font-weight:700;font-size:1.05rem;margin:0}
     <div class="bars" id="bars"></div>
     <div class="wtotal">
       <div><div class="lbl">Total semaine (net)</div><strong id="wSum"></strong></div>
-      <button class="btn primary" id="pdfBtn">PDF de la semaine</button>
+      <button class="btn primary" id="pdfBtn">Envoyer le PDF</button>
     </div>
     <div class="msg" id="pdfMsg"></div>
   </section>
@@ -151,6 +152,7 @@ h2{font-weight:700;font-size:1.05rem;margin:0}
 
 <script>
 const REPAS = 30;
+const DEST_DEFAUT="xler51360@gmail.com";
 const K_DAYS="mh_jours", K_CFG="mh_config", K_PEND="mh_attente";
 const JOURS=["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
 const MOIS=["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
@@ -159,6 +161,7 @@ const load=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){re
 const store=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 
 let days=load(K_DAYS,{}), cfg=load(K_CFG,{prenom:"",url:""}), pending=load(K_PEND,[]);
+if(!cfg.dest) cfg.dest=DEST_DEFAUT;
 let selDate=key(new Date()), weekStart=monday(new Date()), monthRef=new Date(); monthRef.setDate(1);
 let editing=null, confirmDel=null;
 
@@ -192,7 +195,7 @@ async function flush(){
   for(const k of [...pending]){
     try{
       await fetch(cfg.url,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},
-        body:JSON.stringify({jour:k,vacations:days[k]?.vacations||[],prenom:cfg.prenom||""})});
+        body:JSON.stringify({jour:k,vacations:days[k]?.vacations||[],prenom:cfg.prenom||"",dest:cfg.dest||""})});
       pending=pending.filter(x=>x!==k); store(K_PEND,pending);
     }catch(e){break}
   }
@@ -294,11 +297,13 @@ $("mPrev").onclick=()=>{monthRef.setMonth(monthRef.getMonth()-1);renderCal()};
 $("mNext").onclick=()=>{monthRef.setMonth(monthRef.getMonth()+1);renderCal()};
 
 /* ---------- réglages ---------- */
-$("gear").onclick=()=>{$("settings").hidden=!$("settings").hidden;$("sNom").value=cfg.prenom||"";$("sUrl").value=cfg.url||""};
+$("gear").onclick=()=>{$("settings").hidden=!$("settings").hidden;$("sNom").value=cfg.prenom||"";$("sUrl").value=cfg.url||"";$("sDest").value=cfg.dest||""};
 $("sCancel").onclick=()=>{$("settings").hidden=true};
 $("sOk").onclick=()=>{
   const wasEmpty=!cfg.url;
-  cfg={prenom:$("sNom").value.trim(),url:$("sUrl").value.trim()};store(K_CFG,cfg);
+  const destChange=$("sDest").value.trim()!==cfg.dest;
+  cfg={prenom:$("sNom").value.trim(),url:$("sUrl").value.trim(),dest:$("sDest").value.trim()||DEST_DEFAUT};store(K_CFG,cfg);
+  if(destChange&&cfg.url&&!pending.length&&Object.keys(days).length){pending=[Object.keys(days).sort().pop()];store(K_PEND,pending)} // transmet la nouvelle adresse
   if(wasEmpty&&cfg.url){pending=[...new Set([...pending,...Object.keys(days)])];store(K_PEND,pending)} // premier branchement : on envoie tout l'historique
   $("settings").hidden=true;render();flush();
 };
@@ -328,11 +333,13 @@ function buildPdf(){
 $("pdfBtn").onclick=async()=>{
   if(!window.jspdf){$("pdfMsg").textContent="Le module PDF se charge à la première ouverture avec internet. Connecte-toi puis réessaie.";return}
   const name=`heures_${key(weekStart)}.pdf`, blob=buildPdf().output("blob"), file=new File([blob],name,{type:"application/pdf"});
+  let copie=false;
+  try{await navigator.clipboard.writeText(cfg.dest);copie=true}catch(e){}
   try{
-    if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:"Relevé d'heures"});$("pdfMsg").textContent="";return}
+    if(navigator.canShare&&navigator.canShare({files:[file]})){$("pdfMsg").textContent=copie?"Adresse "+cfg.dest+" copiée : colle-la comme destinataire.":"Destinataire : "+cfg.dest;await navigator.share({files:[file],title:"Relevé d'heures"});return}
   }catch(e){if(e.name==="AbortError")return}
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();
-  $("pdfMsg").textContent="PDF enregistré dans les téléchargements.";
+  $("pdfMsg").textContent="PDF enregistré dans les téléchargements. À envoyer à "+cfg.dest+".";
 };
 
 function render(){
