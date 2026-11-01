@@ -1,4 +1,4 @@
-const CACHE = "mes-heures-v5";
+const CACHE = "mes-heures-v6";
 const CDN = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
 const FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg"];
 
