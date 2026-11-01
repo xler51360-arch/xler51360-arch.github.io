@@ -1,0 +1,50 @@
+plugins {
+    id 'com.android.application'
+}
+
+def vc = (project.findProperty('versionCode') ?: '1').toString().toInteger()
+
+android {
+    namespace 'fr.leriche.mesheures'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'fr.leriche.mesheures'
+        minSdk 26
+        targetSdk 34
+        versionCode vc
+        versionName "1.${vc}"
+    }
+
+    signingConfigs {
+        release {
+            storeFile rootProject.file('mesheures.p12')
+            storeType 'pkcs12'
+            storePassword 'mesheures'
+            keyAlias 'mesheures'
+            keyPassword 'mesheures'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+}
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.11.0'
+    implementation 'androidx.core:core:1.13.1'
+}

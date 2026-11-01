@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="fond">#1C2A24</color>
+    <style name="Theme.MesHeures" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">#1C2A24</item>
+        <item name="android:navigationBarColor">#1C2A24</item>
+        <item name="android:windowBackground">@color/fond</item>
+    </style>
+</resources>
