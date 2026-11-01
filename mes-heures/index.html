@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr">
+<html lang="fr" data-theme="auto">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -12,6 +12,7 @@
 <link rel="icon" type="image/svg+xml" href="icon.svg">
 <title>Mes heures</title>
 <script>
+try{const c=JSON.parse(localStorage.getItem("mh_config"))||{};document.documentElement.dataset.theme=c.theme||"auto";document.documentElement.dataset.size=c.taille||"normal"}catch(e){}
 (function(){ // icône d'écran d'accueil iPhone, dessinée en PNG
   try{const c=document.createElement("canvas");c.width=c.height=180;const x=c.getContext("2d");
   x.fillStyle="#1C2A24";x.fillRect(0,0,180,180);x.fillStyle="#E59A12";x.beginPath();x.arc(90,90,61,0,7);x.fill();
@@ -28,9 +29,12 @@
   --mono:ui-monospace,"SF Mono",Menlo,"Roboto Mono",monospace;
   color-scheme:light;
 }
-@media (prefers-color-scheme:dark){:root{
-  --bg:#121A16; --paper:#1A2520; --ink:#E7ECE6; --muted:#9AA89F; --line:#2C3A33;
-  --accent:#F0A928; --accent-ink:#241600; --stop:#E05A40; --good:#5DBB84; color-scheme:dark}}
+:root[data-theme="sombre"]{
+  --bg:#121A16; --paper:#1A2520; --ink:#E7ECE6; --muted:#9AA89F; --line:#2C3A33; --stop:#E05A40; --good:#5DBB84; color-scheme:dark}
+@media (prefers-color-scheme:dark){:root[data-theme="auto"]{
+  --bg:#121A16; --paper:#1A2520; --ink:#E7ECE6; --muted:#9AA89F; --line:#2C3A33; --stop:#E05A40; --good:#5DBB84; color-scheme:dark}}
+:root[data-size="grand"]{font-size:112.5%}
+:root[data-size="grand"] #big{width:min(290px,76vw);font-size:1.6rem}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 [hidden]{display:none!important}
 html,body{margin:0}
@@ -101,9 +105,23 @@ h2{font-weight:700;font-size:1.05rem;margin:0}
 .day.sel{background:var(--ink);color:var(--paper)} .day.sel .h{color:var(--accent)}
 
 .panel{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px}
-.panel input[type=text],.panel input[type=url],.panel input[type=email]{font:inherit;width:100%;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.panel input[type=text],.panel input[type=url],.panel input[type=email],.panel input[type=number]{font:inherit;width:100%;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
 .panel p{margin:0;font-size:.82rem;color:var(--muted)}
 .row{display:flex;gap:8px;flex-wrap:wrap}
+.panel h3{font-size:.95rem;margin:6px 0 0;padding-top:12px;border-top:1px dashed var(--line)}
+.opt{display:flex;flex-direction:column;gap:6px}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{font:inherit;font-size:.85rem;padding:8px 14px;border-radius:999px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.seg button[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--paper);font-weight:600}
+.swatches{display:flex;gap:10px;flex-wrap:wrap}
+.swatches button{width:36px;height:36px;border-radius:50%;border:3px solid var(--paper);box-shadow:0 0 0 1.5px var(--line);cursor:pointer;padding:0}
+.swatches button[aria-pressed="true"]{box-shadow:0 0 0 3px var(--ink)}
+.prog{display:flex;flex-direction:column;gap:6px}
+.track{height:10px;border-radius:999px;background:var(--line);overflow:hidden}
+.track span{display:block;height:100%;width:0;background:var(--accent);border-radius:999px;transition:width .3s}
+.prog.ok .track span{background:var(--good)}
+.ptxt{font-family:var(--mono);font-size:.75rem;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){.track span{transition:none}}
 </style>
 </head>
 <body>
@@ -121,8 +139,15 @@ h2{font-weight:700;font-size:1.05rem;margin:0}
     <div><label class="lbl" for="sNom">Prénom</label><input type="text" id="sNom" maxlength="30" autocomplete="off"></div>
     <div><label class="lbl" for="sUrl">Adresse du service d'envoi</label><input type="url" id="sUrl" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></div>
     <div><label class="lbl" for="sDest">Adresse mail du relevé</label><input type="email" id="sDest" autocomplete="off"></div>
-    <p>Cette adresse est fournie à l'installation. Elle sert à archiver les journées en ligne et à envoyer le relevé PDF chaque dimanche soir à l'adresse mail indiquée.</p>
+    <div><label class="lbl" for="sObj">Objectif hebdomadaire (heures)</label><input type="number" id="sObj" min="0" max="80" step="0.5" inputmode="decimal"></div>
+    <p>L'adresse du service d'envoi est fournie à l'installation. Elle sert à archiver les journées en ligne et à envoyer le relevé PDF chaque dimanche soir à l'adresse mail indiquée.</p>
     <div class="row"><button class="btn primary" id="sOk">Enregistrer</button><button class="btn" id="sCancel">Fermer</button></div>
+    <h3>Apparence</h3>
+    <div class="opt"><div class="lbl">Thème</div><div class="seg" data-opt="theme"><button data-v="auto">Auto</button><button data-v="clair">Clair</button><button data-v="sombre">Sombre</button></div></div>
+    <div class="opt"><div class="lbl">Couleur</div><div class="swatches" data-opt="accent"></div></div>
+    <div class="opt"><div class="lbl">Affichage des heures</div><div class="seg" data-opt="format"><button data-v="hm">7 h 45</button><button data-v="dec">7,75 h</button></div></div>
+    <div class="opt"><div class="lbl">Taille du texte</div><div class="seg" data-opt="taille"><button data-v="normal">Normale</button><button data-v="grand">Grande</button></div></div>
+    <p>L'apparence s'applique tout de suite.</p>
   </section>
 
   <section class="pointer">
@@ -141,6 +166,7 @@ h2{font-weight:700;font-size:1.05rem;margin:0}
       <div><div class="lbl">Total semaine (net)</div><strong id="wSum"></strong></div>
       <button class="btn primary" id="pdfBtn">Envoyer le PDF</button>
     </div>
+    <div class="prog" id="prog" hidden><div class="track"><span id="progBar"></span></div><div class="ptxt" id="progTxt"></div></div>
     <div class="msg" id="pdfMsg"></div>
   </section>
 
@@ -162,6 +188,9 @@ const store=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 
 let days=load(K_DAYS,{}), cfg=load(K_CFG,{prenom:"",url:""}), pending=load(K_PEND,[]);
 if(!cfg.dest) cfg.dest=DEST_DEFAUT;
+const ACCENTS={safran:["#E59A12","#2A1B00","Safran"],menthe:["#2BB59A","#03251E","Menthe"],ocean:["#2F7DD1","#FFFFFF","Océan"],lavande:["#8B6FD6","#FFFFFF","Lavande"],corail:["#F2725A","#2B0B04","Corail"],ardoise:["#5B6B7A","#FFFFFF","Ardoise"]};
+const OPT_DEF={theme:"auto",accent:"safran",format:"hm",taille:"normal",objectif:35};
+for(const o in OPT_DEF) if(cfg[o]===undefined) cfg[o]=OPT_DEF[o];
 let selDate=key(new Date()), weekStart=monday(new Date()), monthRef=new Date(); monthRef.setDate(1);
 let editing=null, confirmDel=null;
 
@@ -174,8 +203,9 @@ function hm(d){return pad(d.getHours())+":"+pad(d.getMinutes())}
 function toMin(s){const [h,m]=s.split(":").map(Number);return h*60+m}
 function brut(v){if(!v.f)return 0;let x=toMin(v.f)-toMin(v.d);if(x<0)x+=1440;return x}
 function net(v){return v.f?Math.max(0,brut(v)-(v.repas?REPAS:0)):0}
-function fmt(m){return Math.floor(m/60)+" h "+pad(m%60)}
-function fmtShort(m){return m?Math.floor(m/60)+"h"+pad(m%60):""}
+function dec(m,n){return (m/60).toFixed(n).replace(".",",")}
+function fmt(m){return cfg.format==="dec"?dec(m,2)+" h":Math.floor(m/60)+" h "+pad(m%60)}
+function fmtShort(m){return !m?"":cfg.format==="dec"?dec(m,1)+"h":Math.floor(m/60)+"h"+pad(m%60)}
 function label(v){return toMin(v.d)<16*60?"Midi":"Soir"}
 function dayNet(k){return (days[k]?.vacations||[]).reduce((a,v)=>a+net(v),0)}
 function longDate(d){return d.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}
@@ -279,6 +309,10 @@ function renderWeek(){
   for(let i=0;i<7;i++){const k=key(addDays(weekStart,i)),n=dayNet(k);tot+=n;max=Math.max(max,n);vals.push([k,n])}
   $("bars").innerHTML=vals.map(([k,n],i)=>`<button class="bar ${k===key(new Date())?"today":""}" data-k="${k}"><b>${fmtShort(n)}</b><span style="height:${Math.round(n/max*80)}%"></span><em>${JOURS[i]}</em></button>`).join("");
   $("wSum").textContent=fmt(tot);
+  const obj=Math.round((parseFloat(cfg.objectif)||0)*60), p=$("prog");
+  p.hidden=!obj;
+  if(obj){const r=tot/obj;$("progBar").style.width=Math.min(100,r*100)+"%";p.classList.toggle("ok",r>=1);
+    $("progTxt").textContent=r>=1?"Objectif atteint : "+fmt(tot)+" sur "+fmt(obj):Math.round(r*100)+" % de l'objectif · reste "+fmt(obj-tot)}
 }
 $("bars").onclick=e=>{const b=e.target.closest(".bar");if(!b)return;selDate=b.dataset.k;editing=null;confirmDel=null;monthRef=parseKey(selDate);monthRef.setDate(1);render()};
 $("wPrev").onclick=()=>{weekStart=addDays(weekStart,-7);renderWeek()};
@@ -297,12 +331,12 @@ $("mPrev").onclick=()=>{monthRef.setMonth(monthRef.getMonth()-1);renderCal()};
 $("mNext").onclick=()=>{monthRef.setMonth(monthRef.getMonth()+1);renderCal()};
 
 /* ---------- réglages ---------- */
-$("gear").onclick=()=>{$("settings").hidden=!$("settings").hidden;$("sNom").value=cfg.prenom||"";$("sUrl").value=cfg.url||"";$("sDest").value=cfg.dest||""};
+$("gear").onclick=()=>{$("settings").hidden=!$("settings").hidden;$("sNom").value=cfg.prenom||"";$("sUrl").value=cfg.url||"";$("sDest").value=cfg.dest||"";$("sObj").value=cfg.objectif};
 $("sCancel").onclick=()=>{$("settings").hidden=true};
 $("sOk").onclick=()=>{
   const wasEmpty=!cfg.url;
   const destChange=$("sDest").value.trim()!==cfg.dest;
-  cfg={prenom:$("sNom").value.trim(),url:$("sUrl").value.trim(),dest:$("sDest").value.trim()||DEST_DEFAUT};store(K_CFG,cfg);
+  cfg=Object.assign(cfg,{prenom:$("sNom").value.trim(),url:$("sUrl").value.trim(),dest:$("sDest").value.trim()||DEST_DEFAUT,objectif:Math.max(0,parseFloat(String($("sObj").value).replace(",","."))||0)});store(K_CFG,cfg);
   if(destChange&&cfg.url&&!pending.length&&Object.keys(days).length){pending=[Object.keys(days).sort().pop()];store(K_PEND,pending)} // transmet la nouvelle adresse
   if(wasEmpty&&cfg.url){pending=[...new Set([...pending,...Object.keys(days)])];store(K_PEND,pending)} // premier branchement : on envoie tout l'historique
   $("settings").hidden=true;render();flush();
@@ -341,6 +375,20 @@ $("pdfBtn").onclick=async()=>{
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();
   $("pdfMsg").textContent="PDF enregistré dans les téléchargements. À envoyer à "+cfg.dest+".";
 };
+
+/* ---------- apparence ---------- */
+document.querySelector('[data-opt="accent"]').innerHTML=Object.keys(ACCENTS).map(k=>`<button data-v="${k}" aria-label="${ACCENTS[k][2]}" title="${ACCENTS[k][2]}" style="background:${ACCENTS[k][0]}"></button>`).join("");
+function applyLook(){
+  const r=document.documentElement, a=ACCENTS[cfg.accent]||ACCENTS.safran;
+  r.dataset.theme=cfg.theme; r.dataset.size=cfg.taille;
+  r.style.setProperty("--accent",a[0]); r.style.setProperty("--accent-ink",a[1]);
+  document.querySelectorAll("[data-opt] button").forEach(b=>b.setAttribute("aria-pressed",String(cfg[b.parentNode.dataset.opt]===b.dataset.v)));
+}
+document.querySelectorAll("[data-opt]").forEach(g=>g.addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  cfg[g.dataset.opt]=b.dataset.v; store(K_CFG,cfg); applyLook(); render();
+}));
+applyLook();
 
 function render(){
   $("today").textContent=longDate(new Date());
