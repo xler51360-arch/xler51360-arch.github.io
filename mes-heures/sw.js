@@ -1,6 +1,6 @@
-const CACHE = "mes-heures-v2";
+const CACHE = "mes-heures-v3";
 const CDN = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
-const FILES = ["./", "./index.html", "./manifest.webmanifest"];
+const FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(async c => {

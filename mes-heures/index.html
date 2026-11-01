@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1C2A24">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mes heures">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<title>Mes heures</title>
+<script>
+(function(){ // icône d'écran d'accueil iPhone, dessinée en PNG
+  try{const c=document.createElement("canvas");c.width=c.height=180;const x=c.getContext("2d");
+  x.fillStyle="#1C2A24";x.fillRect(0,0,180,180);x.fillStyle="#E59A12";x.beginPath();x.arc(90,90,61,0,7);x.fill();
+  x.strokeStyle="#1C2A24";x.lineWidth=8;x.lineCap="round";x.beginPath();x.moveTo(90,90);x.lineTo(90,52);x.moveTo(90,90);x.lineTo(117,103);x.stroke();
+  const l=document.createElement("link");l.rel="apple-touch-icon";l.href=c.toDataURL("image/png");document.head.appendChild(l);}catch(e){}
+})();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --bg:#EEF1EC; --paper:#FBFCF8; --ink:#1C2A24; --muted:#5E6C64; --line:#D3DAD2;
+  --accent:#E59A12; --accent-ink:#2A1B00; --stop:#B83A24; --stop-ink:#fff; --good:#2F7A4E;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,"Roboto Mono",monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#121A16; --paper:#1A2520; --ink:#E7ECE6; --muted:#9AA89F; --line:#2C3A33;
+  --accent:#F0A928; --accent-ink:#241600; --stop:#E05A40; --good:#5DBB84; color-scheme:dark}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.45;
+  padding:calc(16px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(40px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
+h1{font-weight:800;font-size:1.8rem;line-height:1.05;margin:2px 0 0;letter-spacing:-.02em}
+h2{font-weight:700;font-size:1.05rem;margin:0}
+.date{font-family:var(--mono);font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.lbl{font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:600}
+.gear{all:unset;cursor:pointer;width:40px;height:40px;display:grid;place-items:center;border-radius:50%;border:1px solid var(--line);font-size:1.15rem}
+.sync{font-family:var(--mono);font-size:.7rem;color:var(--muted);display:flex;align-items:center;gap:6px;justify-content:center}
+.sync i{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.sync.ok i{background:var(--good)} .sync.wait i{background:var(--accent)}
+
+.pointer{display:flex;flex-direction:column;align-items:center;gap:12px}
+#big{width:min(240px,64vw);aspect-ratio:1;border-radius:50%;border:none;cursor:pointer;
+  background:var(--accent);color:var(--accent-ink);font-family:var(--sans);font-weight:800;font-size:1.35rem;line-height:1.1;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:20px;
+  box-shadow:0 0 0 10px color-mix(in srgb,var(--accent) 22%,transparent),0 10px 24px rgba(0,0,0,.2);transition:transform .12s}
+#big small{font-family:var(--mono);font-weight:500;font-size:.75rem;opacity:.85}
+#big.on{background:var(--stop);color:var(--stop-ink);box-shadow:0 0 0 10px color-mix(in srgb,var(--stop) 22%,transparent),0 10px 24px rgba(0,0,0,.2)}
+#big:active{transform:scale(.95)}
+.timer{font-family:var(--mono);font-weight:700;font-size:1.6rem;font-variant-numeric:tabular-nums;min-height:1.6em}
+.hint{font-size:.85rem;color:var(--muted);text-align:center;max-width:34ch;margin:0}
+
+.ticket{background:var(--paper);border-radius:4px;padding:18px 18px 14px;position:relative;display:flex;flex-direction:column;gap:10px}
+.ticket::before,.ticket::after{content:"";position:absolute;left:0;right:0;height:8px;
+  background:radial-gradient(circle at 6px 0,var(--bg) 5px,transparent 5.5px) repeat-x;background-size:12px 8px}
+.ticket::before{top:0} .ticket::after{bottom:0;transform:scaleY(-1)}
+.vac{display:grid;grid-template-columns:auto 1fr auto;gap:6px 12px;align-items:center;padding:10px 0;border-top:1px dashed var(--line)}
+.tag{font-family:var(--mono);font-size:.7rem;font-weight:700;padding:3px 7px;border:1.5px solid var(--ink);border-radius:3px;text-transform:uppercase}
+.times{font-family:var(--mono);font-size:1.05rem;font-variant-numeric:tabular-nums;display:flex;gap:6px;align-items:center;flex-wrap:wrap;min-width:0}
+.times input{font:inherit;font-size:1rem;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:4px}
+.net{font-family:var(--mono);font-weight:700;font-variant-numeric:tabular-nums}
+.sub{grid-column:1 / 4;display:flex;gap:16px;align-items:center;font-size:.85rem;color:var(--muted);flex-wrap:wrap}
+.sub label{display:flex;gap:6px;align-items:center}
+.sub input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
+.link{all:unset;cursor:pointer;color:var(--muted);text-decoration:underline;text-underline-offset:2px;font-size:.85rem;padding:4px 0}
+.link.danger{color:var(--stop)}
+.total{display:flex;justify-content:space-between;border-top:2px solid var(--ink);padding-top:10px;font-family:var(--mono);font-weight:700}
+.empty{color:var(--muted);font-size:.9rem;padding-top:4px}
+
+.block{display:flex;flex-direction:column;gap:10px}
+.wnav{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.wnav h2{text-align:center;flex:1}
+.nav{all:unset;cursor:pointer;font-size:1.2rem;width:38px;height:38px;display:grid;place-items:center;border-radius:50%;border:1px solid var(--line)}
+.bars{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;height:120px}
+.bar{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;height:100%;background:none;border:none;color:var(--ink);font:inherit;padding:0;cursor:pointer}
+.bar b{font-family:var(--mono);font-size:.66rem;font-weight:500;color:var(--muted)}
+.bar span{width:100%;max-width:38px;background:var(--ink);border-radius:3px 3px 0 0;min-height:2px}
+.bar.today span{background:var(--accent)}
+.bar em{font-style:normal;font-size:.72rem;color:var(--muted);text-transform:uppercase}
+.wtotal{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.wtotal strong{font-family:var(--mono);font-size:1.3rem}
+.btn{font:inherit;font-weight:600;cursor:pointer;border-radius:999px;padding:10px 16px;border:1.5px solid var(--ink);background:transparent;color:var(--ink)}
+.btn.primary{background:var(--ink);color:var(--paper)}
+.msg{font-size:.85rem;color:var(--muted);min-height:1.2em}
+
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.dow{font-size:.66rem;text-transform:uppercase;color:var(--muted);text-align:center}
+.day{aspect-ratio:1;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);font:inherit;cursor:pointer;
+  display:flex;flex-direction:column;justify-content:space-between;padding:4px 5px;text-align:left;min-width:0}
+.day .n{font-size:.75rem;font-weight:600}
+.day .h{font-family:var(--mono);font-size:.6rem;color:var(--good);font-weight:700;white-space:nowrap;overflow:hidden}
+.day.out{opacity:.35} .day.today{border:2px solid var(--accent)}
+.day.sel{background:var(--ink);color:var(--paper)} .day.sel .h{color:var(--accent)}
+
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.panel input[type=text],.panel input[type=url]{font:inherit;width:100%;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.panel p{margin:0;font-size:.82rem;color:var(--muted)}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="date" id="today"></div>
+      <h1 id="title">Mes heures</h1>
+    </div>
+    <button class="gear" id="gear" aria-label="Réglages">⚙</button>
+  </header>
+
+  <section class="panel" id="settings" hidden>
+    <h2>Réglages</h2>
+    <div><label class="lbl" for="sNom">Prénom</label><input type="text" id="sNom" maxlength="30" autocomplete="off"></div>
+    <div><label class="lbl" for="sUrl">Adresse du service d'envoi</label><input type="url" id="sUrl" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></div>
+    <p>Cette adresse est fournie à l'installation. Elle sert à archiver les journées en ligne et à envoyer le relevé PDF par mail chaque dimanche soir.</p>
+    <div class="row"><button class="btn primary" id="sOk">Enregistrer</button><button class="btn" id="sCancel">Fermer</button></div>
+  </section>
+
+  <section class="pointer">
+    <button id="big"><span id="bigTxt">Début de service</span><small id="bigSub">appuie pour pointer</small></button>
+    <div class="timer" id="timer" aria-live="polite"></div>
+    <p class="hint">Un appui au début, un appui à la fin. 30 min de repas sont retirées sur chaque vacation.</p>
+    <div class="sync" id="sync"><i></i><span></span></div>
+  </section>
+
+  <section class="ticket" id="ticket"></section>
+
+  <section class="block">
+    <div class="wnav"><button class="nav" id="wPrev" aria-label="Semaine précédente">‹</button><h2 id="wTitle"></h2><button class="nav" id="wNext" aria-label="Semaine suivante">›</button></div>
+    <div class="bars" id="bars"></div>
+    <div class="wtotal">
+      <div><div class="lbl">Total semaine (net)</div><strong id="wSum"></strong></div>
+      <button class="btn primary" id="pdfBtn">PDF de la semaine</button>
+    </div>
+    <div class="msg" id="pdfMsg"></div>
+  </section>
+
+  <section class="block">
+    <div class="wnav"><button class="nav" id="mPrev" aria-label="Mois précédent">‹</button><h2 id="mTitle"></h2><button class="nav" id="mNext" aria-label="Mois suivant">›</button></div>
+    <div class="cal" id="cal"></div>
+  </section>
+</div>
+
+<script>
+const REPAS = 30;
+const K_DAYS="mh_jours", K_CFG="mh_config", K_PEND="mh_attente";
+const JOURS=["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
+const MOIS=["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+const $=id=>document.getElementById(id);
+const load=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}};
+const store=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+
+let days=load(K_DAYS,{}), cfg=load(K_CFG,{prenom:"",url:""}), pending=load(K_PEND,[]);
+let selDate=key(new Date()), weekStart=monday(new Date()), monthRef=new Date(); monthRef.setDate(1);
+let editing=null, confirmDel=null;
+
+function pad(n){return String(n).padStart(2,"0")}
+function key(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())}
+function parseKey(k){const [y,m,d]=k.split("-").map(Number);return new Date(y,m-1,d)}
+function monday(d){const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()-(x.getDay()+6)%7);return x}
+function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
+function hm(d){return pad(d.getHours())+":"+pad(d.getMinutes())}
+function toMin(s){const [h,m]=s.split(":").map(Number);return h*60+m}
+function brut(v){if(!v.f)return 0;let x=toMin(v.f)-toMin(v.d);if(x<0)x+=1440;return x}
+function net(v){return v.f?Math.max(0,brut(v)-(v.repas?REPAS:0)):0}
+function fmt(m){return Math.floor(m/60)+" h "+pad(m%60)}
+function fmtShort(m){return m?Math.floor(m/60)+"h"+pad(m%60):""}
+function label(v){return toMin(v.d)<16*60?"Midi":"Soir"}
+function dayNet(k){return (days[k]?.vacations||[]).reduce((a,v)=>a+net(v),0)}
+function longDate(d){return d.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}
+
+/* ---------- enregistrement + envoi au service en ligne ---------- */
+function persist(k){
+  if(days[k]&&!days[k].vacations.length) delete days[k];
+  store(K_DAYS,days);
+  if(!pending.includes(k)) pending.push(k);
+  store(K_PEND,pending); flush();
+}
+let flushing=false;
+async function flush(){
+  renderSync();
+  if(flushing||!cfg.url||!pending.length||!navigator.onLine) return;
+  flushing=true;
+  for(const k of [...pending]){
+    try{
+      await fetch(cfg.url,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},
+        body:JSON.stringify({jour:k,vacations:days[k]?.vacations||[],prenom:cfg.prenom||""})});
+      pending=pending.filter(x=>x!==k); store(K_PEND,pending);
+    }catch(e){break}
+  }
+  flushing=false; renderSync();
+}
+window.addEventListener("online",flush);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden){render();flush()}});
+
+function renderSync(){
+  const s=$("sync"), t=s.querySelector("span");
+  if(!cfg.url){s.className="sync";t.textContent="Envoi automatique non configuré (⚙)";return}
+  if(pending.length){s.className="sync wait";t.textContent=pending.length+" journée(s) en attente d'envoi";return}
+  s.className="sync ok";t.textContent="Archivé en ligne";
+}
+
+/* ---------- bouton unique ---------- */
+function openVac(){
+  const t=new Date();
+  for(const k of [key(t),key(addDays(t,-1))]){
+    const vs=days[k]?.vacations||[]; const i=vs.findIndex(v=>!v.f);
+    if(i>=0) return {k,i,v:vs[i]};
+  }
+  return null;
+}
+$("big").onclick=()=>{
+  const now=new Date(), o=openVac();
+  if(o){o.v.f=hm(now);selDate=o.k;persist(o.k)}
+  else{const k=key(now);days[k]=days[k]||{vacations:[]};days[k].vacations.push({d:hm(now),f:null,repas:true});selDate=k;persist(k)}
+  if(navigator.vibrate) navigator.vibrate(60);
+  weekStart=monday(parseKey(selDate)); render();
+};
+function renderButton(){
+  const o=openVac(), b=$("big");
+  if(o){
+    b.classList.add("on");$("bigTxt").textContent="Fin de service";$("bigSub").textContent=label(o.v).toLowerCase()+" · depuis "+o.v.d;
+    const st=parseKey(o.k);const [h,m]=o.v.d.split(":").map(Number);st.setHours(h,m,0,0);
+    const s=Math.max(0,Math.floor((Date.now()-st)/1000));
+    $("timer").textContent=pad(Math.floor(s/3600))+":"+pad(Math.floor(s/60)%60)+":"+pad(s%60);
+  }else{b.classList.remove("on");$("bigTxt").textContent="Début de service";$("bigSub").textContent="appuie pour pointer";$("timer").textContent=""}
+}
+
+/* ---------- journée sélectionnée ---------- */
+function renderTicket(){
+  const k=selDate, vs=days[k]?.vacations||[];
+  let h=`<div><div class="lbl">${k===key(new Date())?"Aujourd'hui":"Journée"}</div><h2>${longDate(parseKey(k))}</h2></div>`;
+  if(!vs.length) h+=`<div class="empty">Aucune vacation pointée ce jour.</div>`;
+  vs.forEach((v,i)=>{
+    const ed=editing&&editing.k===k&&editing.i===i;
+    h+=`<div class="vac"><span class="tag">${label(v)}</span>
+      <div class="times">${ed?`<input type="time" id="eD" value="${v.d}" aria-label="Début"> → <input type="time" id="eF" value="${v.f||""}" aria-label="Fin">`
+        :`${v.d} → ${v.f||"<span style='color:var(--stop)'>en cours</span>"}`}</div>
+      <span class="net">${v.f?fmt(net(v)):""}</span>
+      <div class="sub"><label><input type="checkbox" data-repas="${i}" ${v.repas?"checked":""}> repas −30 min</label>
+        ${ed?`<button class="link" data-save="${i}">Enregistrer</button><button class="link" data-cancel="1">Annuler</button>`:`<button class="link" data-edit="${i}">Corriger</button>`}
+        ${confirmDel===i?`<span>Supprimer ? <button class="link danger" data-delok="${i}">Oui</button> <button class="link" data-delno="1">Non</button></span>`:`<button class="link danger" data-del="${i}">Supprimer</button>`}
+      </div></div>`;
+  });
+  h+=`<div><button class="link" id="addVac">+ Ajouter une vacation oubliée</button></div>`;
+  h+=`<div class="total"><span>Total net</span><span>${fmt(dayNet(k))}</span></div>`;
+  $("ticket").innerHTML=h;
+}
+$("ticket").addEventListener("click",e=>{
+  const t=e.target, k=selDate, vs=days[k]?.vacations, ds=t.dataset;
+  if(t.id==="addVac"){days[k]=days[k]||{vacations:[]};const midi=!days[k].vacations.some(v=>label(v)==="Midi");
+    days[k].vacations.push(midi?{d:"11:00",f:"15:00",repas:true}:{d:"18:30",f:"23:00",repas:true});
+    days[k].vacations.sort((a,b)=>toMin(a.d)-toMin(b.d));editing={k,i:days[k].vacations.findIndex(v=>v.d===(midi?"11:00":"18:30"))};persist(k);render();return}
+  if(ds.edit){editing={k,i:+ds.edit};confirmDel=null;renderTicket();return}
+  if(ds.cancel){editing=null;renderTicket();return}
+  if(ds.save){const v=vs[+ds.save],d=$("eD").value,f=$("eF").value;if(d){v.d=d;v.f=f||null}editing=null;vs.sort((a,b)=>toMin(a.d)-toMin(b.d));persist(k);render();return}
+  if(ds.del){confirmDel=+ds.del;renderTicket();return}
+  if(ds.delno){confirmDel=null;renderTicket();return}
+  if(ds.delok){vs.splice(+ds.delok,1);confirmDel=null;editing=null;persist(k);render();return}
+});
+$("ticket").addEventListener("change",e=>{const i=e.target.dataset.repas;if(i===undefined)return;days[selDate].vacations[+i].repas=e.target.checked;persist(selDate);render()});
+
+/* ---------- semaine ---------- */
+function renderWeek(){
+  const end=addDays(weekStart,6);
+  $("wTitle").textContent=`Du ${weekStart.getDate()} ${MOIS[weekStart.getMonth()]} au ${end.getDate()} ${MOIS[end.getMonth()]}`;
+  let tot=0,max=600;const vals=[];
+  for(let i=0;i<7;i++){const k=key(addDays(weekStart,i)),n=dayNet(k);tot+=n;max=Math.max(max,n);vals.push([k,n])}
+  $("bars").innerHTML=vals.map(([k,n],i)=>`<button class="bar ${k===key(new Date())?"today":""}" data-k="${k}"><b>${fmtShort(n)}</b><span style="height:${Math.round(n/max*80)}%"></span><em>${JOURS[i]}</em></button>`).join("");
+  $("wSum").textContent=fmt(tot);
+}
+$("bars").onclick=e=>{const b=e.target.closest(".bar");if(!b)return;selDate=b.dataset.k;editing=null;confirmDel=null;monthRef=parseKey(selDate);monthRef.setDate(1);render()};
+$("wPrev").onclick=()=>{weekStart=addDays(weekStart,-7);renderWeek()};
+$("wNext").onclick=()=>{weekStart=addDays(weekStart,7);renderWeek()};
+
+/* ---------- calendrier ---------- */
+function renderCal(){
+  $("mTitle").textContent=MOIS[monthRef.getMonth()].replace(/^./,c=>c.toUpperCase())+" "+monthRef.getFullYear();
+  let h=JOURS.map(j=>`<div class="dow">${j}</div>`).join(""), d=monday(monthRef), tk=key(new Date());
+  for(let i=0;i<42;i++){const k=key(d),out=d.getMonth()!==monthRef.getMonth();if(i===35&&out)break;
+    h+=`<button class="day ${out?"out":""} ${k===tk?"today":""} ${k===selDate?"sel":""}" data-k="${k}"><span class="n">${d.getDate()}</span><span class="h">${fmtShort(dayNet(k))}</span></button>`;d=addDays(d,1)}
+  $("cal").innerHTML=h;
+}
+$("cal").onclick=e=>{const b=e.target.closest(".day");if(!b)return;selDate=b.dataset.k;weekStart=monday(parseKey(selDate));editing=null;confirmDel=null;render()};
+$("mPrev").onclick=()=>{monthRef.setMonth(monthRef.getMonth()-1);renderCal()};
+$("mNext").onclick=()=>{monthRef.setMonth(monthRef.getMonth()+1);renderCal()};
+
+/* ---------- réglages ---------- */
+$("gear").onclick=()=>{$("settings").hidden=!$("settings").hidden;$("sNom").value=cfg.prenom||"";$("sUrl").value=cfg.url||""};
+$("sCancel").onclick=()=>{$("settings").hidden=true};
+$("sOk").onclick=()=>{
+  const wasEmpty=!cfg.url;
+  cfg={prenom:$("sNom").value.trim(),url:$("sUrl").value.trim()};store(K_CFG,cfg);
+  if(wasEmpty&&cfg.url){pending=[...new Set([...pending,...Object.keys(days)])];store(K_PEND,pending)} // premier branchement : on envoie tout l'historique
+  $("settings").hidden=true;render();flush();
+};
+
+/* ---------- PDF ---------- */
+function buildPdf(){
+  if(!window.jspdf)throw new Error('pdf');const {jsPDF}=window.jspdf, doc=new jsPDF({unit:"mm",format:"a4"}), end=addDays(weekStart,6);
+  doc.setFont("helvetica","bold");doc.setFontSize(18);doc.text("Relevé d'heures"+(cfg.prenom?" - "+cfg.prenom:""),15,20);
+  doc.setFont("helvetica","normal");doc.setFontSize(11);doc.text(`Semaine du ${weekStart.toLocaleDateString("fr-FR")} au ${end.toLocaleDateString("fr-FR")}`,15,28);
+  doc.setFontSize(9);doc.setTextColor(100);doc.text("Pause repas de 30 min déduite de chaque vacation où elle est cochée.",15,34);doc.setTextColor(0);
+  const c=[15,62,92,115,138,165];let y=46;
+  doc.setFont("helvetica","bold");doc.setFontSize(10);["Jour","Vacation","Début","Fin","Repas","Net"].forEach((t,i)=>doc.text(t,c[i],y));
+  doc.line(15,y+2,195,y+2);y+=9;doc.setFont("helvetica","normal");let tot=0;
+  for(let i=0;i<7;i++){
+    const d=addDays(weekStart,i),k=key(d),vs=days[k]?.vacations||[];
+    const lab=d.toLocaleDateString("fr-FR",{weekday:"long",day:"2-digit",month:"2-digit"});
+    if(!vs.length){doc.setTextColor(150);doc.text(lab,c[0],y);doc.text("repos",c[1],y);doc.setTextColor(0);y+=8}
+    vs.forEach((v,j)=>{if(j===0)doc.text(lab,c[0],y);doc.text(label(v),c[1],y);doc.text(v.d,c[2],y);doc.text(v.f||"en cours",c[3],y);doc.text(v.repas?"-30 min":"non",c[4],y);doc.text(fmt(net(v)),c[5],y);y+=7});
+    const n=dayNet(k);tot+=n;
+    if(vs.length){doc.setFont("helvetica","bold");doc.text("Jour : "+fmt(n),c[5],y);doc.setFont("helvetica","normal");y+=8}
+    doc.setDrawColor(210);doc.line(15,y-4,195,y-4);doc.setDrawColor(0);
+  }
+  y+=4;doc.setFont("helvetica","bold");doc.setFontSize(13);doc.text("Total semaine (net) : "+fmt(tot),15,y);
+  doc.setFont("helvetica","normal");doc.setFontSize(8);doc.setTextColor(120);doc.text("Édité le "+new Date().toLocaleString("fr-FR"),15,287);
+  return doc;
+}
+$("pdfBtn").onclick=async()=>{
+  if(!window.jspdf){$("pdfMsg").textContent="Le module PDF se charge à la première ouverture avec internet. Connecte-toi puis réessaie.";return}
+  const name=`heures_${key(weekStart)}.pdf`, blob=buildPdf().output("blob"), file=new File([blob],name,{type:"application/pdf"});
+  try{
+    if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:"Relevé d'heures"});$("pdfMsg").textContent="";return}
+  }catch(e){if(e.name==="AbortError")return}
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();
+  $("pdfMsg").textContent="PDF enregistré dans les téléchargements.";
+};
+
+function render(){
+  $("today").textContent=longDate(new Date());
+  $("title").textContent=cfg.prenom?"Heures de "+cfg.prenom:"Mes heures";
+  renderButton();renderTicket();renderWeek();renderCal();renderSync();
+}
+setInterval(renderButton,1000);
+render();flush();
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body>
+</html>
